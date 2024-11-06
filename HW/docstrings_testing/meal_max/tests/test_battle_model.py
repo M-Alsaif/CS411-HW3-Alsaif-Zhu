@@ -87,38 +87,6 @@ def test_battle_with_two_combatants(mock_update_stats, mock_get_random, battle_m
     mock_update_stats.assert_any_call(sample_meal2.id, 'loss')
 
 
-@patch("meal_max.models.battle_model.get_random")
-@patch("meal_max.models.battle_model.update_meal_stats")
-def test_battle_with_two_combatants_2(mock_update_stats, mock_get_random, battle_model, sample_meal1, sample_meal2):
-    """Test a battle between two combatants and verify the correct winner."""
-    battle_model.prep_combatant(sample_meal1)
-    battle_model.prep_combatant(sample_meal2)
-    
-    # Set the mock random number to 0.5
-    mock_get_random.return_value = 0.5
-
-    # Calculate expected scores
-    score1 = battle_model.get_battle_score(sample_meal1)
-    score2 = battle_model.get_battle_score(sample_meal2)
-    delta = abs(score1 - score2) / 100
-
-    # Determine expected winner based on delta and mocked random number
-    if delta > mock_get_random.return_value:
-        expected_winner = sample_meal1.meal if score1 > score2 else sample_meal2.meal
-    else:
-        expected_winner = sample_meal2.meal if score2 > score1 else sample_meal1.meal
-
-    # Run the battle and capture the winner
-    winner_name = battle_model.battle()
-
-    # Assert the winner is as expected
-    assert winner_name == expected_winner, f"Expected winner {expected_winner}, but got {winner_name}"
-
-    # Check that stats were updated correctly for both meals
-    mock_update_stats.assert_any_call(sample_meal1.id, 'win' if winner_name == sample_meal1.meal else 'loss')
-    mock_update_stats.assert_any_call(sample_meal2.id, 'win' if winner_name == sample_meal2.meal else 'loss')
-
-
 
 ##################################################
 # Battle Score Calculation Test Cases
