@@ -22,7 +22,7 @@ class Meal:
          meal (str): String representation of meal name
          cuisine (str): String representation of cuisine 
          price (float): Float representation of the price, must be positive
-         difficulity (str): String representation of difficulty chosen from a list ['LOW', 'MED', 'HIGH']
+         difficulty (str): String representation of difficulty chosen from a list ['LOW', 'MED', 'HIGH']
 
     """
     id: int
