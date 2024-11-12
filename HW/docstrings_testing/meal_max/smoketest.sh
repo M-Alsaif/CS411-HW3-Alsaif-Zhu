@@ -2,7 +2,22 @@
 
 # Define the base URL for the Flask API
 BASE_URL="http://localhost:5000/api"
-ECHO_JSON=false  # Set to true to display JSON output
+
+# Flag to control whether to echo JSON output
+ECHO_JSON=false
+
+# Parse command-line arguments
+while [ "$#" -gt 0 ]; do
+  case $1 in
+    --echo-json) ECHO_JSON=true ;;
+    *) echo "Unknown parameter passed: $1"; exit 1 ;;
+  esac
+  shift
+done
+
+###############################################
+# Health Checks
+###############################################
 
 # Function to check the health of the service
 check_health() {
@@ -28,30 +43,34 @@ check_db() {
   fi
 }
 
-# Clear all meals in the catalog
+###############################################
+# Meal Management Tests
+###############################################
+
+# Clear meals table
 clear_meals() {
   echo "Clearing all meals..."
   curl -s -X DELETE "$BASE_URL/clear-meals" | grep -q '"status": "success"'
   if [ $? -eq 0 ]; then
-    echo "Meals cleared successfully."
+    echo "All meals cleared successfully."
   else
     echo "Failed to clear meals."
     exit 1
   fi
 }
 
-# Create a new meal
-create_meal() {
-  meal=$1
-  cuisine=$2
-  price=$3
-  difficulty=$4
-
-  echo "Creating meal ($meal, $cuisine, $price, $difficulty)..."
-  curl -s -X POST "$BASE_URL/create-meal" -H "Content-Type: application/json" \
-    -d "{\"meal\":\"$meal\", \"cuisine\":\"$cuisine\", \"price\":$price, \"difficulty\":\"$difficulty\"}" | grep -q '"status": "success"'
-
-  if [ $? -eq 0 ]; then
+# Test meal creation
+create_meal_test() {
+  meal_name="$1"
+  cuisine="$2"
+  price="$3"
+  difficulty="$4"
+  
+  echo "Creating meal: $meal_name, Cuisine: $cuisine, Price: $price, Difficulty: $difficulty"
+  response=$(curl -s -X POST "$BASE_URL/create-meal" -H "Content-Type: application/json" \
+    -d "{\"meal\":\"$meal_name\", \"cuisine\":\"$cuisine\", \"price\":$price, \"difficulty\":\"$difficulty\"}")
+  
+  if echo "$response" | grep -q '"status": "success"'; then
     echo "Meal created successfully."
   else
     echo "Failed to create meal."
@@ -59,13 +78,26 @@ create_meal() {
   fi
 }
 
-# Delete a meal by ID
-delete_meal() {
-  meal_id=$1
+# Test fetching meal by ID
+get_meal_by_id_test() {
+  local meal_id="$1"
+  
+  echo "Fetching meal by ID: $meal_id"
+  response=$(curl -s -X GET "$BASE_URL/get-meal-by-id/$meal_id")
+  if echo "$response" | grep -q '"status": "success"'; then
+    echo "Meal retrieved successfully by ID."
+  else
+    echo "Failed to retrieve meal by ID."
+    exit 1
+  fi
+}
 
-  echo "Deleting meal with ID: $meal_id..."
-  curl -s -X DELETE "$BASE_URL/delete-meal/$meal_id" | grep -q '"status": "success"'
-  if [ $? -eq 0 ]; then
+# Test deleting meal by ID
+delete_meal_test() {
+  meal_id="$1"
+  echo "Deleting meal by ID: $meal_id"
+  response=$(curl -s -X DELETE "$BASE_URL/delete-meal/$meal_id")
+  if echo "$response" | grep -q '"status": "success"'; then
     echo "Meal deleted successfully."
   else
     echo "Failed to delete meal."
@@ -73,14 +105,18 @@ delete_meal() {
   fi
 }
 
+###############################################
+# Combatant Management
+###############################################
+
 # Prepare a meal as a combatant
 prep_combatant() {
   meal=$1
-
+  
   echo "Preparing combatant: $meal..."
   curl -s -X POST "$BASE_URL/prep-combatant" -H "Content-Type: application/json" \
     -d "{\"meal\":\"$meal\"}" | grep -q '"status": "success"'
-
+  
   if [ $? -eq 0 ]; then
     echo "Combatant prepared successfully."
   else
@@ -113,6 +149,10 @@ get_combatants() {
   fi
 }
 
+###############################################
+# Battle Simulation
+###############################################
+
 # Execute a battle
 battle() {
   echo "Starting a battle..."
@@ -137,34 +177,48 @@ get_leaderboard() {
   fi
 }
 
-# Run smoketests by calling functions in sequence
-run_smoketests() {
-  check_health
-  check_db
-  clear_meals
-  clear_combatants
+###############################################
+# Run Tests in Sequence
+###############################################
 
-  # Test creating meals
-  create_meal "Pasta" "Italian" 15.0 "MED"
-  create_meal "Sushi" "Japanese" 20.0 "HIGH"
-  create_meal "Burger" "American" 10.0 "LOW"
+clear_meals
+check_health
+check_db
+clear_meals
+clear_combatants
 
-  # Test preparing combatants
-  prep_combatant "Pasta"
-  prep_combatant "Sushi"
-  get_combatants
+# Test creating meals
+create_meal_test "Pasta" "Italian" 15.0 "MED"
+create_meal_test "Sushi" "Japanese" 20.0 "HIGH"
+create_meal_test "Burger" "American" 10.0 "LOW"
 
-  # Test battle
-  battle
-  get_combatants  # Ensure only one combatant remains
+# Test preparing combatants
+prep_combatant "Pasta"
+prep_combatant "Sushi"
+get_combatants
 
-  # Test leaderboard
-  get_leaderboard
+# Test battle
+battle
+get_combatants # Ensure only one combatant remains
 
-  # Cleanup
-  clear_meals
-  clear_combatants
-}
+# Test leaderboard
+get_leaderboard
 
-# Execute smoketests
-run_smoketests
+# Cleanup
+clear_meals
+clear_combatants
+
+# Run meal creation test
+create_meal_test "Pasta" "Italian" 15.99 "MED"
+get_meal_by_id_test 1
+delete_meal_test 1
+create_meal_test "Sushi" "Japanese" 20.0 "HIGH"
+create_meal_test "Burger" "American" 10.5 "LOW"
+get_meal_by_id_test 2
+delete_meal_test 3
+get_meal_by_id_test 2
+
+# Run leaderboard test sorted by wins
+get_leaderboard 
+
+echo "All tests completed successfully."
